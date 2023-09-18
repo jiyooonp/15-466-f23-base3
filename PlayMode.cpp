@@ -12,6 +12,23 @@
 
 #include <random>
 
+void fitInPlane(glm::vec3 &position)
+{
+	const double minX = -2.5;
+	const double minY = -1;
+	const double maxX = 2.5;
+	const double maxY = 1;
+
+	if (position.x > maxX)
+		position.x = maxX;
+	else if (position.x < minX)
+		position.x = minX;
+	if (position.y > maxY)
+		position.y = maxY;
+	else if (position.y < minY)
+		position.y = minY;
+}
+
 GLuint hexapod_meshes_for_lit_color_texture_program = 0;
 Load<MeshBuffer> hexapod_meshes(LoadTagDefault, []() -> MeshBuffer const *
 								{
@@ -34,8 +51,10 @@ Load<Scene> hexapod_scene(LoadTagDefault, []() -> Scene const *
 												 drawable.pipeline.start = mesh.start;
 												 drawable.pipeline.count = mesh.count; }); });
 
-Load<Sound::Sample> dusty_floor_sample(LoadTagDefault, []() -> Sound::Sample const *
-									   { return new Sound::Sample(data_path("dusty-floor.opus")); });
+Load<Sound::Sample> good_object_sample(LoadTagDefault, []() -> Sound::Sample const *
+									   { return new Sound::Sample(data_path("good.wav")); });
+Load<Sound::Sample> bad_object_sample(LoadTagDefault, []() -> Sound::Sample const *
+									  { return new Sound::Sample(data_path("bad.wav")); });
 
 PlayMode::PlayMode() : scene(*hexapod_scene)
 {
@@ -44,22 +63,26 @@ PlayMode::PlayMode() : scene(*hexapod_scene)
 	{
 		std::cout << transform.name << std::endl;
 		if (transform.name == "Tobby")
-			hip = &transform;
+			tobby = &transform;
 		else if (transform.name == "Plane")
-			upper_leg = &transform;
+			plane = &transform;
 		else if (transform.name == "Light")
-			lower_leg = &transform;
+			light = &transform;
+		else if (transform.name == "good")
+			good_object = &transform;
+		else if (transform.name == "bad")
+			bad_object = &transform;
 	}
-	if (hip == nullptr)
+	if (tobby == nullptr)
 		throw std::runtime_error("Tobby not found.");
-	if (upper_leg == nullptr)
-		throw std::runtime_error("Upper leg not found.");
-	if (lower_leg == nullptr)
-		throw std::runtime_error("Lower leg not found.");
-
-	hip_base_rotation = hip->rotation;
-	upper_leg_base_rotation = upper_leg->rotation;
-	lower_leg_base_rotation = lower_leg->rotation;
+	if (plane == nullptr)
+		throw std::runtime_error("Plane not found.");
+	if (light == nullptr)
+		throw std::runtime_error("Light not found.");
+	if (good_object == nullptr)
+		throw std::runtime_error("Good Object not found.");
+	if (bad_object == nullptr)
+		throw std::runtime_error("Bad Object not found.");
 
 	// get pointer to camera for convenience:
 	if (scene.cameras.size() != 1)
@@ -68,7 +91,8 @@ PlayMode::PlayMode() : scene(*hexapod_scene)
 
 	// start music loop playing:
 	//  (note: position will be over-ridden in update())
-	leg_tip_loop = Sound::loop_3D(*dusty_floor_sample, 1.0f, get_leg_tip_position(), 10.0f);
+	good_object_loop = Sound::loop_3D(*good_object_sample, 0.0f, get_good_object_position(), 10.0f);
+	bad_object_loop = Sound::loop_3D(*bad_object_sample, 0.0f, get_bad_object_position(), 10.0f);
 }
 
 PlayMode::~PlayMode()
@@ -109,6 +133,32 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 			down.pressed = true;
 			return true;
 		}
+
+		// move tobby
+		else if (evt.key.keysym.sym == SDLK_LEFT)
+		{
+			left.downs += 1;
+			left.pressed = true;
+			return true;
+		}
+		else if (evt.key.keysym.sym == SDLK_RIGHT)
+		{
+			right.downs += 1;
+			right.pressed = true;
+			return true;
+		}
+		else if (evt.key.keysym.sym == SDLK_UP)
+		{
+			up.downs += 1;
+			up.pressed = true;
+			return true;
+		}
+		else if (evt.key.keysym.sym == SDLK_DOWN)
+		{
+			down.downs += 1;
+			down.pressed = true;
+			return true;
+		}
 	}
 	else if (evt.type == SDL_KEYUP)
 	{
@@ -128,6 +178,28 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 			return true;
 		}
 		else if (evt.key.keysym.sym == SDLK_s)
+		{
+			down.pressed = false;
+			return true;
+		}
+		// move tobby
+
+		else if (evt.key.keysym.sym == SDLK_LEFT)
+		{
+			left.pressed = false;
+			return true;
+		}
+		else if (evt.key.keysym.sym == SDLK_RIGHT)
+		{
+			right.pressed = false;
+			return true;
+		}
+		else if (evt.key.keysym.sym == SDLK_UP)
+		{
+			up.pressed = false;
+			return true;
+		}
+		else if (evt.key.keysym.sym == SDLK_DOWN)
 		{
 			down.pressed = false;
 			return true;
@@ -160,48 +232,23 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 void PlayMode::update(float elapsed)
 {
 
-	// slowly rotates through [0,1):
-	wobble += elapsed / 10.0f;
-	wobble -= std::floor(wobble);
-
-	hip->rotation = hip_base_rotation * glm::angleAxis(
-											glm::radians(5.0f * std::sin(wobble * 2.0f * float(M_PI))),
-											glm::vec3(0.0f, 1.0f, 0.0f));
-	upper_leg->rotation = upper_leg_base_rotation * glm::angleAxis(
-														glm::radians(7.0f * std::sin(wobble * 2.0f * 2.0f * float(M_PI))),
-														glm::vec3(0.0f, 0.0f, 1.0f));
-	lower_leg->rotation = lower_leg_base_rotation * glm::angleAxis(
-														glm::radians(10.0f * std::sin(wobble * 3.0f * 2.0f * float(M_PI))),
-														glm::vec3(0.0f, 0.0f, 1.0f));
-
 	// move sound to follow leg tip position:
-	leg_tip_loop->set_position(get_leg_tip_position(), 1.0f / 60.0f);
+	good_object_loop->set_position(get_good_object_position(), 1.0f / 60.0f);
+	bad_object_loop->set_position(get_bad_object_position(), 1.0f / 60.0f);
 
-	// move camera:
+	// move tobby
 	{
-
 		// combine inputs into a move:
-		constexpr float PlayerSpeed = 30.0f;
 		glm::vec2 move = glm::vec2(0.0f);
 		if (left.pressed && !right.pressed)
-			move.x = -1.0f;
+			tobby->position.x -= tobby_speed * elapsed;
 		if (!left.pressed && right.pressed)
-			move.x = 1.0f;
+			tobby->position.x += tobby_speed * elapsed;
 		if (down.pressed && !up.pressed)
-			move.y = -1.0f;
+			tobby->position.y -= tobby_speed * elapsed;
 		if (!down.pressed && up.pressed)
-			move.y = 1.0f;
-
-		// make it so that moving diagonally doesn't go faster:
-		if (move != glm::vec2(0.0f))
-			move = glm::normalize(move) * PlayerSpeed * elapsed;
-
-		glm::mat4x3 frame = camera->transform->make_local_to_parent();
-		glm::vec3 frame_right = frame[0];
-		// glm::vec3 up = frame[1];
-		glm::vec3 frame_forward = -frame[2];
-
-		camera->transform->position += move.x * frame_right + move.y * frame_forward;
+			tobby->position.y += tobby_speed * elapsed;
+		fitInPlane(tobby->position);
 	}
 
 	{ // update listener to camera position:
@@ -263,8 +310,14 @@ void PlayMode::draw(glm::uvec2 const &drawable_size)
 	GL_ERRORS();
 }
 
-glm::vec3 PlayMode::get_leg_tip_position()
+glm::vec3 PlayMode::get_good_object_position()
 {
 	// the vertex position here was read from the model in blender:
-	return lower_leg->make_local_to_world() * glm::vec4(-1.26137f, -11.861f, 0.0f, 1.0f);
+	return good_object->make_local_to_world() * glm::vec4(-1.26137f, -11.861f, 0.0f, 1.0f);
+}
+
+glm::vec3 PlayMode::get_bad_object_position()
+{
+	// the vertex position here was read from the model in blender:
+	return bad_object->make_local_to_world() * glm::vec4(-1.26137f, -11.861f, 0.0f, 1.0f);
 }

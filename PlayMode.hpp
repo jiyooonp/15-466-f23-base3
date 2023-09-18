@@ -31,19 +31,29 @@ struct PlayMode : Mode
 	Scene scene;
 
 	// hexapod leg to wobble:
-	Scene::Transform *hip = nullptr;
-	Scene::Transform *upper_leg = nullptr;
-	Scene::Transform *lower_leg = nullptr;
-	glm::quat hip_base_rotation;
-	glm::quat upper_leg_base_rotation;
-	glm::quat lower_leg_base_rotation;
-	float wobble = 0.0f;
+	Scene::Transform *tobby = nullptr;
+	Scene::Transform *plane = nullptr;
+	Scene::Transform *light = nullptr;
+	Scene::Transform *good_object = nullptr;
+	Scene::Transform *bad_object = nullptr;
 
-	glm::vec3 get_leg_tip_position();
+	glm::vec3 get_good_object_position();
+	glm::vec3 get_bad_object_position();
 
 	// music coming from the tip of the leg (as a demonstration):
-	std::shared_ptr<Sound::PlayingSample> leg_tip_loop;
+	std::shared_ptr<Sound::PlayingSample> good_object_loop;
+	std::shared_ptr<Sound::PlayingSample> bad_object_loop;
 
 	// camera:
 	Scene::Camera *camera = nullptr;
+
+	// tobby
+	float tobby_speed = 1.0f;
+
+	// game state
+	int score = 0;
+	int lives = 3;
+	float time = 0.0f;
+
+	int level = 1;
 };
