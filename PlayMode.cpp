@@ -158,6 +158,7 @@ void PlayMode::update(float elapsed)
 	if (lives <= 0)
 	{
 		game_over();
+		return;
 	}
 	// move sound to follow leg tip position:
 	good_object_loop->set_position(get_good_object_position(), 1.0f / 60.0f);
@@ -329,6 +330,7 @@ void PlayMode::game_over()
 	// game over
 	// std::cout << "Game Over" << std::endl;
 	is_game_over = true;
+	good_object_loop->stop();
 }
 void PlayMode::check_object_in_frame(glm::vec3 &position)
 {

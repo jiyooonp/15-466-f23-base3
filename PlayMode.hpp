@@ -68,3 +68,6 @@ struct PlayMode : Mode
 	std::vector<float> object_init_position = {0.0f, 0.0f, 0.0f};
 	std::vector<float> object_vector = {0.0f, 0.0f, 0.0f};
 };
+void fitInPlane(glm::vec3 &position);
+
+bool checkCollisionTobbyObject(Scene::Transform *tobby, Scene::Transform *object);
