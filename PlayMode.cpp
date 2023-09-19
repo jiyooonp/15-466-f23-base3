@@ -44,7 +44,6 @@ PlayMode::PlayMode() : scene(*hexapod_scene)
 	// get pointers to leg for convenience:
 	for (auto &transform : scene.transforms)
 	{
-		std::cout << transform.name << std::endl;
 		if (transform.name == "Tobby")
 			tobby = &transform;
 		else if (transform.name == "Plane")
