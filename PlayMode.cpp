@@ -110,6 +110,11 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 			down.pressed = true;
 			return true;
 		}
+		else if (evt.key.keysym.sym == SDLK_r)
+		{
+			restart_game();
+			return true;
+		}
 	}
 	else if (evt.type == SDL_KEYUP)
 	{
@@ -195,6 +200,8 @@ void PlayMode::update(float elapsed)
 	{
 		// levels up
 		level += 1;
+		glClearColor(0.7f, 0.7f, 0.9f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		level_up(true);
 		std::cout << "good object collision" << std::endl;
 	}
@@ -217,7 +224,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size)
 	glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(1.0f, 1.0f, 0.95f)));
 	glUseProgram(0);
 
-	glClearColor(0.6f, 0.5f, 0.5f, 1.0f);
+	glClearColor(0.9f, 0.7f, 0.8f, 1.0f);
 	glClearDepth(1.0f); // 1.0 is actually the default value to clear the depth buffer to, but FYI you can change it.
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -242,11 +249,8 @@ void PlayMode::draw(glm::uvec2 const &drawable_size)
 
 		std::string display_str = score_str + " | " + level_str + " | " + lives_str;
 		if (is_game_over)
-			display_str = "Game Over | " + score_str;
-		lines.draw_text(display_str,
-						glm::vec3(-aspect + 0.1f * H, -1.0 + 0.1f * H, 0.0),
-						glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
-						glm::u8vec4(0x00, 0x00, 0x00, 0x00));
+			display_str = "Game Over | " + score_str + " | Press R to restart";
+		lines.draw_text(display_str, glm::vec3(-aspect + 0.1f * H, -1.0 + 0.1f * H, 0.0), glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f), glm::u8vec4(0x00, 0x00, 0x00, 0x00));
 		float ofs = 2.0f / drawable_size.y;
 		lines.draw_text(display_str,
 						glm::vec3(-aspect + 0.1f * H + ofs, -1.0 + +0.1f * H + ofs, 0.0),
@@ -310,6 +314,16 @@ void PlayMode::game_over()
 	is_game_over = true;
 	good_object_loop->stop();
 }
+
+void PlayMode::restart_game()
+{
+	// reset game
+	is_game_over = false;
+	score = 0;
+	lives = 3;
+	level = 1;
+	level_up(false);
+}
 void PlayMode::check_object_in_frame(glm::vec3 &position)
 {
 	// out of the frame
@@ -344,10 +358,10 @@ bool checkCollisionTobbyObject(Scene::Transform *tobby, Scene::Transform *object
 }
 void fitInPlane(glm::vec3 &position)
 {
-	const double minX = -2.5;
-	const double minY = -1;
-	const double maxX = 2.5;
-	const double maxY = 1;
+	const double minX = -2.3;
+	const double minY = -0.9;
+	const double maxX = 2.3;
+	const double maxY = 0.9;
 
 	if (position.x > maxX)
 		position.x = maxX;

@@ -21,6 +21,7 @@ struct PlayMode : Mode
 	void level_up(bool);
 	void check_object_in_frame(glm::vec3 &position);
 	void game_over();
+	void restart_game();
 
 	//----- game state -----
 
