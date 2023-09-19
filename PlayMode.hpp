@@ -17,6 +17,10 @@ struct PlayMode : Mode
 	virtual bool handle_event(SDL_Event const &, glm::uvec2 const &window_size) override;
 	virtual void update(float elapsed) override;
 	virtual void draw(glm::uvec2 const &drawable_size) override;
+	void update_object(float elapsed);
+	void level_up(bool);
+	void check_object_in_frame(glm::vec3 &position);
+	void game_over();
 
 	//----- game state -----
 
@@ -25,7 +29,7 @@ struct PlayMode : Mode
 	{
 		uint8_t downs = 0;
 		uint8_t pressed = 0;
-	} left, right, down, up;
+	} left, right, down, up, space;
 
 	// local copy of the game scene (so code can change it during gameplay):
 	Scene scene;
@@ -48,7 +52,7 @@ struct PlayMode : Mode
 	Scene::Camera *camera = nullptr;
 
 	// tobby
-	float tobby_speed = 1.0f;
+	float tobby_speed = 4.0f;
 
 	// game state
 	int score = 0;
@@ -56,4 +60,11 @@ struct PlayMode : Mode
 	float time = 0.0f;
 
 	int level = 1;
+	bool is_game_over = false;
+
+	// object
+	float object_speed = 1.0f;
+	std::vector<float> object_goal_position = {0.0f, 0.0f, 0.5f};
+	std::vector<float> object_init_position = {0.0f, 0.0f, 0.0f};
+	std::vector<float> object_vector = {0.0f, 0.0f, 0.0f};
 };
