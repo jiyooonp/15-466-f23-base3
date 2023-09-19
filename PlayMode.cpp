@@ -36,12 +36,9 @@ Load<Scene> hexapod_scene(LoadTagDefault, []() -> Scene const *
 
 Load<Sound::Sample> good_object_sample(LoadTagDefault, []() -> Sound::Sample const *
 									   { return new Sound::Sample(data_path("good_2.wav")); });
-Load<Sound::Sample> bad_object_sample(LoadTagDefault, []() -> Sound::Sample const *
-									  { return new Sound::Sample(data_path("bad_2.wav")); });
 
 PlayMode::PlayMode() : scene(*hexapod_scene)
 {
-	// get pointers to leg for convenience:
 	for (auto &transform : scene.transforms)
 	{
 		if (transform.name == "Tobby")
@@ -52,8 +49,6 @@ PlayMode::PlayMode() : scene(*hexapod_scene)
 			light = &transform;
 		else if (transform.name == "Good")
 			good_object = &transform;
-		else if (transform.name == "Bad")
-			bad_object = &transform;
 	}
 	if (tobby == nullptr)
 		throw std::runtime_error("Tobby not found.");
@@ -63,8 +58,6 @@ PlayMode::PlayMode() : scene(*hexapod_scene)
 		throw std::runtime_error("Light not found.");
 	if (good_object == nullptr)
 		throw std::runtime_error("Good Object not found.");
-	if (bad_object == nullptr)
-		throw std::runtime_error("Bad Object not found.");
 
 	// get pointer to camera for convenience:
 	if (scene.cameras.size() != 1)
@@ -72,9 +65,7 @@ PlayMode::PlayMode() : scene(*hexapod_scene)
 	camera = &scene.cameras.front();
 
 	// start music loop playing:
-	//  (note: position will be over-ridden in update())
 	good_object_loop = Sound::loop_3D(*good_object_sample, 0.5f, get_good_object_position(), 1.0f);
-	// bad_object_loop = Sound::loop_3D(*bad_object_sample, 0.0f, get_bad_object_position(), 10.0f);
 	level_up(false);
 }
 
@@ -161,7 +152,6 @@ void PlayMode::update(float elapsed)
 	}
 	// move sound to follow leg tip position:
 	good_object_loop->set_position(get_good_object_position(), 1.0f / 60.0f);
-	// bad_object_loop->set_position(get_bad_object_position(), 1.0f / 60.0f);
 
 	// move tobby
 	{
@@ -195,9 +185,9 @@ void PlayMode::update(float elapsed)
 	down.downs = 0;
 
 	{ // make good object fly
-		good_object->position.x += object_vector[0] * elapsed * level;
-		good_object->position.y += object_vector[1] * elapsed * level;
-		good_object->position.z += object_vector[2] * elapsed * level;
+		good_object->position.x += object_vector[0] * elapsed * object_speed;
+		good_object->position.y += object_vector[1] * elapsed * object_speed;
+		good_object->position.z += object_vector[2] * elapsed * object_speed;
 	}
 
 	// check for collisions
@@ -211,10 +201,6 @@ void PlayMode::update(float elapsed)
 	else
 	{
 		check_object_in_frame(good_object->position);
-	}
-	if (checkCollisionTobbyObject(tobby, bad_object))
-	{
-		// std::cout << "bad object collision" << std::endl;
 	}
 }
 
@@ -231,7 +217,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size)
 	glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(1.0f, 1.0f, 0.95f)));
 	glUseProgram(0);
 
-	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+	glClearColor(0.6f, 0.5f, 0.5f, 1.0f);
 	glClearDepth(1.0f); // 1.0 is actually the default value to clear the depth buffer to, but FYI you can change it.
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -276,16 +262,11 @@ glm::vec3 PlayMode::get_good_object_position()
 	return good_object->make_local_to_world() * glm::vec4(-1.26137f, -11.861f, 0.0f, 1.0f);
 }
 
-glm::vec3 PlayMode::get_bad_object_position()
-{
-	// the vertex position here was read from the model in blender:
-	return bad_object->make_local_to_world() * glm::vec4(-1.26137f, -11.861f, 0.0f, 1.0f);
-}
-
 void PlayMode::level_up(bool add_score)
 {
 	if (add_score)
 		score += 1;
+
 	// move good object to a random position:
 	std::mt19937 mt;
 	mt.seed(std::random_device()());
@@ -300,11 +281,9 @@ void PlayMode::level_up(bool add_score)
 	good_object->position.y = object_init_position[1];
 	good_object->position.z = object_init_position[2];
 
-	std::uniform_real_distribution<float> object_speed_dist(0.1f, 1.0f);
-	object_speed = object_speed_dist(mt);
-
 	std::uniform_real_distribution<float> goal_dist_z(0.2f, 0.8f);
 	std::uniform_real_distribution<float> goal_dist_y(-0.8f, 0.8f);
+
 	object_goal_position[0] = object_init_position[0]; // goal_dist_x(mt);
 	object_goal_position[1] = goal_dist_y(mt);
 	object_goal_position[2] = goal_dist_z(mt);
@@ -313,21 +292,21 @@ void PlayMode::level_up(bool add_score)
 		(object_goal_position[0] - object_init_position[0]),
 		(object_goal_position[1] - object_init_position[1]),
 		(object_goal_position[2] - object_init_position[2])};
+
 	// normalize vector
 	float length = sqrt(object_vector[0] * object_vector[0] + object_vector[1] * object_vector[1] + object_vector[2] * object_vector[2]);
 	object_vector[0] /= length;
 	object_vector[1] /= length;
 	object_vector[2] /= length;
 
-	// move bad object to a random position:
-	// bad_object->position.x = object_goal_position[0];
-	// bad_object->position.y = object_goal_position[1];
-	// bad_object->position.z = object_goal_position[2];
+	// object speed
+	std::uniform_real_distribution<float> object_speed_dist(0.9f, level);
+	object_speed = object_speed_dist(mt);
+	std::cout << "object speed: " << object_speed << std::endl;
 }
 void PlayMode::game_over()
 {
 	// game over
-	// std::cout << "Game Over" << std::endl;
 	is_game_over = true;
 	good_object_loop->stop();
 }
@@ -340,7 +319,7 @@ void PlayMode::check_object_in_frame(glm::vec3 &position)
 		if (lives > 0)
 		{
 			lives -= 1;
-			std::cout << "lost a life. Now: " << lives << std::endl;
+			std::cout << "Lost a life. Now: " << lives << std::endl;
 			level_up(false);
 		}
 		else

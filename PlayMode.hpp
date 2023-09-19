@@ -39,14 +39,11 @@ struct PlayMode : Mode
 	Scene::Transform *plane = nullptr;
 	Scene::Transform *light = nullptr;
 	Scene::Transform *good_object = nullptr;
-	Scene::Transform *bad_object = nullptr;
 
 	glm::vec3 get_good_object_position();
-	glm::vec3 get_bad_object_position();
 
 	// music coming from the tip of the leg (as a demonstration):
 	std::shared_ptr<Sound::PlayingSample> good_object_loop;
-	std::shared_ptr<Sound::PlayingSample> bad_object_loop;
 
 	// camera:
 	Scene::Camera *camera = nullptr;

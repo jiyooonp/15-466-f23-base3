@@ -21,4 +21,6 @@ Your goal is to move **Tobby** to where the candy flies to. You have three lives
 - **up, down, right, left** : Moves Tobby.
 - **space** : Tobby jumps.
 
+## For a better gaming experience, please use your headphones!
+
 This game was built with [NEST](NEST.md).
