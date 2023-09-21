@@ -312,12 +312,13 @@ void PlayMode::game_over()
 {
 	// game over
 	is_game_over = true;
-	good_object_loop->stop();
+	good_object_loop->set_volume(0.0f);
 }
 
 void PlayMode::restart_game()
 {
 	// reset game
+	good_object_loop->set_volume(1.0f);
 	is_game_over = false;
 	score = 0;
 	lives = 3;
